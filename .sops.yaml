@@ -1,6 +1,7 @@
 keys:
   # Your workstation age key - generate with: age-keygen -o ~/.config/sops/age/keys.txt
   - &user_key age1q0e7q4cyh9vmqfdgnnpty7dnfvjaf65xud2xdhqlr982qxxfly0q680rp6
+  - &host_key age1kh5mttghhgv5lsdlhmylt8774uy4ugshcm6hagert0um0se0fq4qqwr9kk
   # Server's age key - add after first deploy using: ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
   # - &host_homeserver age1...
 
@@ -9,4 +10,4 @@ creation_rules:
     key_groups:
       - age:
           - *user_key
-          # - *host_homeserver  # Uncomment after first deploy
+          - *host_key
