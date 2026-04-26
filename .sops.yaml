@@ -1,8 +1,8 @@
 keys:
   # Your workstation age key - generate with: age-keygen -o ~/.config/sops/age/keys.txt
   - &user_key age1q0e7q4cyh9vmqfdgnnpty7dnfvjaf65xud2xdhqlr982qxxfly0q680rp6
-  # Server's age key (Beelink ME Pro homeserver)
-  - &host_homeserver age1dytr8nzy7kc50qpnrt4x9sl9eulwygrdnunnq02wrn2dgtazsfnsmrq48j
+  # Server's generated age key (from /var/lib/sops-nix/key.txt)
+  - &host_homeserver age1gj72ch8ufswp0fsxynk0d8td62kjf34unjdmrxex5a5680pd2paqaeqng0
 
 creation_rules:
   - path_regex: secrets/secrets\.yaml$
