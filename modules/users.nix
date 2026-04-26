@@ -18,5 +18,5 @@
   # Root has no password and no SSH access. Use sudo from admin.
   users.users.root.hashedPassword = "!";
 
-  security.sudo.wheelNeedsPassword = true;
+  security.sudo.wheelNeedsPassword = false;  # TEMPORARY: revert after fixing sops
 }
