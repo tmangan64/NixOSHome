@@ -1,11 +1,11 @@
-{ config, ... }:
+{ config, self, ... }: # Add 'self' to the arguments
 
 {
   sops = {
-    defaultSopsFile = ../secrets/secrets.yaml;
+    # This ensures Nix looks at the 'secrets' folder in the root of your flake
+    defaultSopsFile = "${self}/secrets/secrets.yaml"; 
     defaultSopsFormat = "yaml";
-
-    # Decrypts using the host's ed25519 SSH key, converted to age at activation.
+    
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
     age.keyFile = "/var/lib/sops-nix/key.txt";
     age.generateKey = true;
