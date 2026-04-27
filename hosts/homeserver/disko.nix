@@ -1,14 +1,9 @@
 { lib, ... }:
 
-# Single-disk layout. The device path is set from user-config.
-# CHANGE THIS to match your hardware. Common values:
-#   /dev/nvme0n1
-#   /dev/sda
-# Find yours by running `lsblk` in the Ubuntu live environment before deploying.
-
 {
   disko.devices = {
     disk = {
+      # NVMe for OS
       main = {
         type = "disk";
         device = "/dev/nvme0n1";
@@ -42,6 +37,10 @@
     };
   };
 
-  # Service data lives on the same disk for now under /var/lib.
-  # When a second disk is added, mount it at /srv/data and move state.
+  # SATA HDD for data storage (manually partitioned)
+  fileSystems."/srv/data" = {
+    device = "/dev/sda1";
+    fsType = "ext4";
+    options = [ "noatime" ];
+  };
 }

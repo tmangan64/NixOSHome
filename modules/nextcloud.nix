@@ -6,6 +6,7 @@
     package = pkgs.nextcloud32;
     hostName = "nas.home";
     https = true;  # we are reverse proxied behind Caddy with TLS
+    datadir = "/srv/data/nextcloud";
 
     # Listen only on loopback. Caddy proxies to it.
     settings = {
@@ -57,7 +58,7 @@
   };
 
   systemd.services."nextcloud-setup" = {
-    requires = [ "postgresql.service" ];
-    after = [ "postgresql.service" ];
+    requires = [ "postgresql.service" "srv-data.mount" ];
+    after = [ "postgresql.service" "srv-data.mount" ];
   };
 }
