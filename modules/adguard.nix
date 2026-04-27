@@ -28,6 +28,9 @@
         querylog_enabled = false;
         querylog_file_enabled = false;
 
+        # Don't use /etc/hosts - we manage internal names via rewrites.
+        hostsfile_enabled = false;
+
         # Block reverse lookup leaks for RFC1918 ranges.
         bogus_nxdomain = [ ];
       };
@@ -35,7 +38,7 @@
       filtering = {
         # Internal name rewrites so .home hostnames resolve to the server.
         rewrites = [
-          { domain = "dns.home"; answer = "192.168.0.66"; }
+          { domain = "dns.home"; answer = "192.168.0.66"; enabled = true; }
         ];
         protection_enabled = true;
         filtering_enabled = true;
