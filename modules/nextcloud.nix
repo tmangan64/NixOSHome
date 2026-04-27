@@ -34,7 +34,6 @@
     phpOptions = {
       "opcache.interned_strings_buffer" = "16";
       "opcache.memory_consumption" = "256";
-      "memory_limit" = "512M";
     };
 
     maxUploadSize = "16G";
