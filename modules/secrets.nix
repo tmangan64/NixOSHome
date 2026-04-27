@@ -13,6 +13,10 @@
       "admin/password_hash" = {
         neededForUsers = true;
       };
+      "nextcloud/admin_password" = {
+        owner = "nextcloud";
+        group = "nextcloud";
+      };
     };
   };
 }
