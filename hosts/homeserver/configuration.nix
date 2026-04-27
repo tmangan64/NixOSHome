@@ -46,6 +46,9 @@
   # SSH
   services.openssh = {
     enable = true;
+
+    ports = [ 2266 ]; # non-standard port
+
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
