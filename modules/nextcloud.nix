@@ -3,7 +3,7 @@
 {
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud31;
+    package = pkgs.nextcloud32;
     hostName = "nas.home";
     https = true;  # we are reverse proxied behind Caddy with TLS
 
