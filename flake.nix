@@ -30,6 +30,7 @@
           ./modules/secrets.nix
           ./modules/adguard.nix
           ./modules/caddy.nix
+          ./modules/nextcloud.nix
         ];
       };
     };

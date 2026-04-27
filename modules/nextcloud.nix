@@ -4,13 +4,13 @@
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud30;
-    hostName = "cloud.home";
+    hostName = "nas.home";
     https = true;  # we are reverse proxied behind Caddy with TLS
 
     # Listen only on loopback. Caddy proxies to it.
     settings = {
       trusted_proxies = [ "127.0.0.1" ];
-      trusted_domains = [ "cloud.home" ];
+      trusted_domains = [ "nas.home" ];
       overwriteprotocol = "https";
       default_phone_region = "GB";
       maintenance_window_start = 1;
@@ -41,7 +41,7 @@
   };
 
   # Make Nextcloud listen on 8080 for Caddy to proxy.
-  services.nginx.virtualHosts."cloud.home" = {
+  services.nginx.virtualHosts."nas.home" = {
     listen = [{
       addr = "127.0.0.1";
       port = 8080;

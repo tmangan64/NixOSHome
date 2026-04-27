@@ -1,5 +1,10 @@
 { config, lib, pkgs, ... }:
 
+let
+  # Used to trigger a restart when settings change
+  settingsFormat = pkgs.formats.yaml { };
+  configFile = settingsFormat.generate "AdGuardHome.yaml" config.services.adguardhome.settings;
+in
 {
   services.adguardhome = {
     enable = true;
@@ -39,6 +44,7 @@
         # Internal name rewrites so .home hostnames resolve to the server.
         rewrites = [
           { domain = "dns.home"; answer = "192.168.0.66"; enabled = true; }
+          { domain = "nas.home"; answer = "192.168.0.66"; enabled = true; }
         ];
         protection_enabled = true;
         filtering_enabled = true;
@@ -64,4 +70,7 @@
       user_rules = [ ];
     };
   };
+
+  # Restart AdGuard when settings change
+  systemd.services.adguardhome.restartTriggers = [ configFile ];
 }

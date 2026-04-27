@@ -20,6 +20,12 @@
           reverse_proxy localhost:3000
         '';
       };
+      "nas.home" = {
+        extraConfig = ''
+          tls internal
+          reverse_proxy localhost:8080
+        '';
+      };
     };
   };
 }
