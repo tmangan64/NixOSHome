@@ -28,16 +28,15 @@
         querylog_enabled = false;
         querylog_file_enabled = false;
 
-        # Internal name rewrites so .home hostnames resolve to the server.
-        rewrites = [
-          { domain = "dns.home"; answer = "192.168.0.66"; }
-        ];
-
         # Block reverse lookup leaks for RFC1918 ranges.
         bogus_nxdomain = [ ];
       };
 
       filtering = {
+        # Internal name rewrites so .home hostnames resolve to the server.
+        rewrites = [
+          { domain = "dns.home"; answer = "192.168.0.66"; }
+        ];
         protection_enabled = true;
         filtering_enabled = true;
         parental_enabled = false;
