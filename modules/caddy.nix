@@ -26,6 +26,12 @@
           reverse_proxy localhost:8080
         '';
       };
+      "auth.home" = {
+        extraConfig = ''
+          tls internal
+          reverse_proxy localhost:9000
+        '';
+      };
     };
   };
 }

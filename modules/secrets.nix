@@ -17,6 +17,8 @@
         owner = "nextcloud";
         group = "nextcloud";
       };
+      "authentik/db_password" = {};
+      "authentik/secret_key" = {};
     };
   };
 }
