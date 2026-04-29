@@ -24,7 +24,7 @@ in {
     "d /var/lib/authentik/media 0750 root root - -"
     "d /var/lib/authentik/templates 0750 root root - -"
     "d /var/lib/authentik/certs 0750 root root - -"
-    "d /var/lib/authentik/postgres 0700 root root - -"
+    "d /var/lib/authentik/postgres 0700 70 70 - -"
     "d /var/lib/authentik/redis 0750 root root - -"
   ];
 
