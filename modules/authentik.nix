@@ -19,13 +19,14 @@ in {
   };
 
   # Persistent volumes for the stack.
+  # Authentik server/worker run as UID 1000, postgres as UID 70, redis as UID 999
   systemd.tmpfiles.rules = [
     "d /var/lib/authentik 0750 root root - -"
-    "d /var/lib/authentik/media 0750 root root - -"
-    "d /var/lib/authentik/templates 0750 root root - -"
-    "d /var/lib/authentik/certs 0750 root root - -"
+    "d /var/lib/authentik/media 0750 1000 1000 - -"
+    "d /var/lib/authentik/templates 0750 1000 1000 - -"
+    "d /var/lib/authentik/certs 0750 1000 1000 - -"
     "d /var/lib/authentik/postgres 0700 70 70 - -"
-    "d /var/lib/authentik/redis 0750 root root - -"
+    "d /var/lib/authentik/redis 0750 999 999 - -"
   ];
 
   virtualisation.oci-containers.containers = {
