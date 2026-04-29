@@ -15,7 +15,8 @@ in
 
     settings = {
       dns = {
-        bind_hosts = [ "0.0.0.0" ];
+        # Bind to specific interfaces to avoid conflict with Podman's aardvark-dns on 10.89.0.1
+        bind_hosts = [ "127.0.0.1" "192.168.0.66" ];
         port = 53;
 
         upstream_dns = [
