@@ -32,9 +32,9 @@
       enable = true;
       allowPing = true;
 
-      # Default deny on input. Each service module opens what it needs.
+      # Deny by default
       allowedTCPPorts = [
-        22    # SSH
+        2266  # Non-standard SSH port
         53    # AdGuard DNS
         80    # Caddy HTTP redirect
         443   # Caddy HTTPS
