@@ -32,6 +32,7 @@
           ./modules/caddy.nix
           ./modules/nextcloud.nix
           ./modules/authentik.nix
+          ./modules/wireguard.nix
         ];
       };
     };

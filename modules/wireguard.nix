@@ -14,11 +14,11 @@
     # Add peer entries here. Each peer needs its own publicKey and a unique
     # IP within 10.100.0.0/24.
     peers = [
-      # Example peer; replace with your real peer keys.
-      # {
-      #   publicKey = "REPLACE_WITH_PEER_PUBLIC_KEY";
-      #   allowedIPs = [ "10.100.0.2/32" ];
-      # }
+      {
+        # Laptop
+        publicKey = "44X38kf/b94+D9eR+02QqzTKxl3PoprYO16dUF9uy2c=";
+        allowedIPs = [ "10.100.0.2/32" ];
+      }
     ];
 
     # NAT outbound traffic from peers so they can reach the LAN through this host.

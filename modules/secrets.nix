@@ -23,6 +23,7 @@
         owner = "nextcloud";
         group = "nextcloud";
       };
+      "wireguard/private_key" = {};
     };
   };
 }

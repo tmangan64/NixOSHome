@@ -42,6 +42,7 @@
       ];
       allowedUDPPorts = [
         53      # AdGuard DNS
+        51820   # WireGuard VPN
       ];
 
       # Drop everything else, log it.
