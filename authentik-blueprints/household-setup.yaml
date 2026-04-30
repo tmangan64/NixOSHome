@@ -48,20 +48,6 @@ entries:
   #     username: example
 
   # ============================================================================
-  # CERTIFICATE (for signing tokens)
-  # ============================================================================
-
-  - model: authentik_crypto.certificatekeypair
-    id: cert-signing
-    attrs:
-      name: Household SSO Signing Certificate
-      certificate_data: "" # Auto-generated if empty
-      key_data: ""
-    identifiers:
-      name: Household SSO Signing Certificate
-    state: created # Only create if doesn't exist
-
-  # ============================================================================
   # OAUTH2/OIDC PROVIDER FOR NEXTCLOUD
   # ============================================================================
 
@@ -80,16 +66,16 @@ entries:
       client_id: nextcloud
       client_secret: !Env [AUTHENTIK_NEXTCLOUD_CLIENT_SECRET, null]
       # Internal (.home) and external (DuckDNS) redirect URIs
-      # Replace YOURSUBDOMAIN with your actual DuckDNS subdomain
       redirect_uris: |
         https://nas.home/apps/oidc/oidc
         https://nas.home/apps/user_oidc/code
         https://cloud.barnsfold.duckdns.org/apps/oidc/oidc
         https://cloud.barnsfold.duckdns.org/apps/user_oidc/code
+      # Uses Authentik's default self-signed certificate
       signing_key:
         !Find [
           authentik_crypto.certificatekeypair,
-          [name, Household SSO Signing Certificate],
+          [name, authentik Self-signed Certificate],
         ]
       access_token_validity: hours=1
       refresh_token_validity: days=30
