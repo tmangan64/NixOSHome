@@ -33,6 +33,7 @@
           ./modules/nextcloud.nix
           ./modules/authentik.nix
           ./modules/wireguard.nix
+          ./modules/duckdns.nix
         ];
       };
     };

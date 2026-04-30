@@ -24,6 +24,7 @@
         group = "nextcloud";
       };
       "wireguard/private_key" = {};
+      "duckdns/token" = {};
     };
   };
 }
