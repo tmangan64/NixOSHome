@@ -1,6 +1,17 @@
 { config, lib, pkgs, ... }:
 
 {
+  # Enable the user_oidc app for SSO with Authentik
+  services.nextcloud.extraApps = {
+    user_oidc = pkgs.fetchNextcloudApp {
+      appName = "user_oidc";
+      sha256 = "sha256-SzSLPdxSVFNRwmMJUkF5r2lIphIG3EkaoXIEQqkD2lc=";
+      url = "https://github.com/nextcloud-releases/user_oidc/releases/download/v6.1.1/user_oidc-v6.1.1.tar.gz";
+      appVersion = "6.1.1";
+      license = "agpl3Plus";
+    };
+  };
+
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud32;
@@ -60,5 +71,41 @@
   systemd.services."nextcloud-setup" = {
     requires = [ "postgresql.service" "srv-data.mount" ];
     after = [ "postgresql.service" "srv-data.mount" ];
+  };
+
+  # Configure OIDC provider for Authentik SSO
+  # This runs after nextcloud-setup to register the OIDC provider
+  systemd.services."nextcloud-oidc-setup" = {
+    description = "Configure Nextcloud OIDC for Authentik";
+    after = [ "nextcloud-setup.service" ];
+    wantedBy = [ "multi-user.target" ];
+    path = [ config.services.nextcloud.occ ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "nextcloud";
+      RemainAfterExit = true;
+    };
+    script = let
+      clientSecret = config.sops.secrets."authentik/nextcloud_client_secret".path;
+    in ''
+      # Check if provider already exists
+      if ! nextcloud-occ user_oidc:provider Authentik 2>/dev/null | grep -q "Authentik"; then
+        # Read the client secret
+        SECRET=$(cat ${clientSecret})
+
+        # Create the OIDC provider
+        nextcloud-occ user_oidc:provider Authentik \
+          --clientid="nextcloud" \
+          --clientsecret="$SECRET" \
+          --discoveryuri="https://auth.home/application/o/nextcloud/.well-known/openid-configuration" \
+          --scope="openid email profile" \
+          --unique-uid=1 \
+          --check-bearer=1
+
+        echo "OIDC provider configured"
+      else
+        echo "OIDC provider already exists"
+      fi
+    '';
   };
 }

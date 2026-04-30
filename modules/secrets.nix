@@ -19,6 +19,10 @@
       };
       "authentik/db_password" = {};
       "authentik/secret_key" = {};
+      "authentik/nextcloud_client_secret" = {
+        owner = "nextcloud";
+        group = "nextcloud";
+      };
     };
   };
 }
