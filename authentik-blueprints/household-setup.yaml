@@ -62,15 +62,21 @@ entries:
           authentik_flows.flow,
           [slug, default-provider-authorization-implicit-consent],
         ]
+      invalidation_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       client_type: confidential
       client_id: nextcloud
       client_secret: !Env [AUTHENTIK_NEXTCLOUD_CLIENT_SECRET, null]
       # Internal (.home) and external (DuckDNS) redirect URIs
-      redirect_uris: |
-        https://nas.home/apps/oidc/oidc
-        https://nas.home/apps/user_oidc/code
-        https://cloud.barnsfold.duckdns.org/apps/oidc/oidc
-        https://cloud.barnsfold.duckdns.org/apps/user_oidc/code
+      redirect_uris:
+        - matching_mode: strict
+          url: https://nas.home/apps/oidc/oidc
+        - matching_mode: strict
+          url: https://nas.home/apps/user_oidc/code
+        - matching_mode: strict
+          url: https://cloud.barnsfold.duckdns.org/apps/oidc/oidc
+        - matching_mode: strict
+          url: https://cloud.barnsfold.duckdns.org/apps/user_oidc/code
       # Uses Authentik's default self-signed certificate
       signing_key:
         !Find [
