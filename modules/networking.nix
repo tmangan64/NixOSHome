@@ -22,10 +22,10 @@
     # Bootstrap nameservers used during early boot before AdGuard is up.
     nameservers = [ "127.0.0.1" "1.1.1.1" "9.9.9.9" ];
 
-    # Static DNS entries so Caddy and clients on the host resolve internal names
+    # Static DNS entries so services on the host can resolve internal names
     # without depending on AdGuard rewrites being healthy.
     hosts = {
-      "127.0.0.1" = [ "dns.home" ];
+      "127.0.0.1" = [ "dns.home" "auth.home" "nas.home" ];
     };
 
     firewall = {
