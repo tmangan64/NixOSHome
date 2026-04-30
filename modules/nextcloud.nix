@@ -10,7 +10,7 @@ in {
   services.nextcloud.extraApps = {
     user_oidc = pkgs.fetchNextcloudApp {
       appName = "user_oidc";
-      sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      sha256 = "sha256-Sc7R/hkjAvRUC4aUOLbMucoNabcXt27XB1pwqlz2Zv0=";
       url = "https://github.com/nextcloud-releases/user_oidc/releases/download/v8.10.1/user_oidc-v8.10.1.tar.gz";
       appVersion = "8.10.1";
       license = "agpl3Plus";
