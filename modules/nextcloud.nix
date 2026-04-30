@@ -10,16 +10,16 @@ in {
   services.nextcloud.extraApps = {
     user_oidc = pkgs.fetchNextcloudApp {
       appName = "user_oidc";
-      sha256 = "sha256-6YJ6uYY2Tiuum3mS/ipY+eM9pFLk3S/MLvOr1/WFx+E=";
-      url = "https://github.com/nextcloud-releases/user_oidc/releases/download/v6.1.1/user_oidc-v6.1.1.tar.gz";
-      appVersion = "6.1.1";
+      sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      url = "https://github.com/nextcloud-releases/user_oidc/releases/download/v8.10.1/user_oidc-v8.10.1.tar.gz";
+      appVersion = "8.10.1";
       license = "agpl3Plus";
     };
   };
 
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud32;
+    package = pkgs.nextcloud33;
     hostName = "nas.home";
     https = true;  # we are reverse proxied behind Caddy with TLS
     datadir = "/srv/data/nextcloud";
