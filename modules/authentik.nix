@@ -148,7 +148,6 @@ in {
 
       DB_PASS=$(cat ${config.sops.secrets."authentik/db_password".path})
       SECRET_KEY=$(cat ${config.sops.secrets."authentik/secret_key".path})
-      NEXTCLOUD_SECRET=$(cat ${config.sops.secrets."authentik/nextcloud_client_secret".path})
 
       umask 077
       cat > /run/authentik/postgres.env <<EOF
@@ -158,7 +157,6 @@ EOF
       cat > /run/authentik/server.env <<EOF
 AUTHENTIK_SECRET_KEY=$SECRET_KEY
 AUTHENTIK_POSTGRESQL__PASSWORD=$DB_PASS
-AUTHENTIK_NEXTCLOUD_CLIENT_SECRET=$NEXTCLOUD_SECRET
 EOF
     '';
   };

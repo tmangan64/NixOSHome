@@ -4,19 +4,7 @@ let
   # Change this to your DuckDNS subdomain (e.g., "myserver" for myserver.duckdns.org)
   duckdnsSubdomain = "barnsfold";
   externalDomain = "cloud.${duckdnsSubdomain}.duckdns.org";
-  externalAuthDomain = "auth.${duckdnsSubdomain}.duckdns.org";
 in {
-  # Enable the user_oidc app for SSO with Authentik
-  services.nextcloud.extraApps = {
-    user_oidc = pkgs.fetchNextcloudApp {
-      appName = "user_oidc";
-      sha256 = "sha256-Sc7R/hkjAvRUC4aUOLbMucoNabcXt27XB1pwqlz2Zv0=";
-      url = "https://github.com/nextcloud-releases/user_oidc/releases/download/v8.10.1/user_oidc-v8.10.1.tar.gz";
-      appVersion = "8.10.1";
-      license = "agpl3Plus";
-    };
-  };
-
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud33;
@@ -64,12 +52,6 @@ in {
     }];
   };
 
-  # Configure PHP-FPM pool to trust Caddy's internal CA for OIDC
-  services.phpfpm.pools.nextcloud.phpOptions = ''
-    curl.cainfo = /var/lib/caddy-ca/ca-bundle.crt
-    openssl.cafile = /var/lib/caddy-ca/ca-bundle.crt
-  '';
-
   services.postgresql = {
     enable = true;
     ensureDatabases = [ "nextcloud" ];
@@ -82,52 +64,5 @@ in {
   systemd.services."nextcloud-setup" = {
     requires = [ "postgresql.service" "srv-data.mount" ];
     after = [ "postgresql.service" "srv-data.mount" ];
-  };
-
-  # Configure OIDC providers for Authentik SSO
-  # Creates two providers: one for internal access, one for external
-  systemd.services."nextcloud-oidc-setup" = {
-    description = "Configure Nextcloud OIDC for Authentik";
-    after = [ "nextcloud-setup.service" ];
-    wantedBy = [ "multi-user.target" ];
-    path = [ config.services.nextcloud.occ ];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "nextcloud";
-      RemainAfterExit = true;
-    };
-    script = let
-      clientSecret = config.sops.secrets."authentik/nextcloud_client_secret".path;
-    in ''
-      SECRET=$(cat ${clientSecret})
-
-      # Internal OIDC provider (for nas.home access)
-      if ! nextcloud-occ user_oidc:provider Authentik 2>/dev/null | grep -q "Authentik"; then
-        nextcloud-occ user_oidc:provider Authentik \
-          --clientid="nextcloud" \
-          --clientsecret="$SECRET" \
-          --discoveryuri="https://auth.home/application/o/nextcloud/.well-known/openid-configuration" \
-          --scope="openid email profile" \
-          --unique-uid=1 \
-          --check-bearer=1
-        echo "Internal OIDC provider configured"
-      else
-        echo "Internal OIDC provider already exists"
-      fi
-
-      # External OIDC provider (for cloud.SUBDOMAIN.duckdns.org access)
-      if ! nextcloud-occ user_oidc:provider "Authentik External" 2>/dev/null | grep -q "Authentik External"; then
-        nextcloud-occ user_oidc:provider "Authentik External" \
-          --clientid="nextcloud" \
-          --clientsecret="$SECRET" \
-          --discoveryuri="https://${externalAuthDomain}/application/o/nextcloud/.well-known/openid-configuration" \
-          --scope="openid email profile" \
-          --unique-uid=1 \
-          --check-bearer=1
-        echo "External OIDC provider configured"
-      else
-        echo "External OIDC provider already exists"
-      fi
-    '';
   };
 }

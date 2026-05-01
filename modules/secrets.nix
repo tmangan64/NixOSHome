@@ -19,10 +19,6 @@
       };
       "authentik/db_password" = {};
       "authentik/secret_key" = {};
-      "authentik/nextcloud_client_secret" = {
-        owner = "nextcloud";
-        group = "nextcloud";
-      };
       "wireguard/private_key" = {};
       "duckdns/token" = {
         mode = "0444";  # World-readable since it's only used for IP updates
