@@ -1,6 +1,5 @@
 # Authentik Blueprint: Household SSO Setup
-# This blueprint creates the core structure for household identity management.
-# Uses Forward Auth (Proxy Provider) for protecting applications via Caddy.
+# Forward auth configuration for Caddy reverse proxy
 
 version: 1
 metadata:
@@ -14,118 +13,61 @@ entries:
   # ============================================================================
 
   - model: authentik_core.group
-    id: group-household-admins
+    identifiers:
+      name: Household Admins
     attrs:
       name: Household Admins
       is_superuser: false
-    identifiers:
-      name: Household Admins
 
   - model: authentik_core.group
-    id: group-household-members
+    identifiers:
+      name: Household Members
     attrs:
       name: Household Members
       is_superuser: false
-    identifiers:
-      name: Household Members
 
   # ============================================================================
-  # PROXY PROVIDER FOR NEXTCLOUD (Forward Auth mode)
+  # PROXY PROVIDERS (Forward Auth mode for Caddy)
   # ============================================================================
 
   - model: authentik_providers_proxy.proxyprovider
-    id: provider-nextcloud
+    identifiers:
+      name: Nextcloud Internal
     attrs:
-      name: Nextcloud Proxy
-      authentication_flow:
-        !Find [authentik_flows.flow, [slug, default-authentication-flow]]
-      authorization_flow:
-        !Find [
-          authentik_flows.flow,
-          [slug, default-provider-authorization-implicit-consent],
-        ]
-      invalidation_flow:
-        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
-      # Forward auth mode - Caddy handles the proxying
+      name: Nextcloud Internal
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       mode: forward_single
-      # Internal URL that Caddy proxies to (not used in forward_single but required)
-      internal_host: http://localhost:8080
-      # External URL users access
       external_host: https://nas.home
-      # Cookie domain for SSO across subdomains
-      cookie_domain: home
-      access_token_validity: hours=24
-    identifiers:
-      name: Nextcloud Proxy
 
-  # External domain provider (for DuckDNS access)
   - model: authentik_providers_proxy.proxyprovider
-    id: provider-nextcloud-external
-    attrs:
-      name: Nextcloud External Proxy
-      authentication_flow:
-        !Find [authentik_flows.flow, [slug, default-authentication-flow]]
-      authorization_flow:
-        !Find [
-          authentik_flows.flow,
-          [slug, default-provider-authorization-implicit-consent],
-        ]
-      invalidation_flow:
-        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
-      mode: forward_single
-      internal_host: http://localhost:8080
-      external_host: https://cloud.barnsfold.duckdns.org
-      cookie_domain: barnsfold.duckdns.org
-      access_token_validity: hours=24
     identifiers:
-      name: Nextcloud External Proxy
+      name: Nextcloud External
+    attrs:
+      name: Nextcloud External
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      mode: forward_single
+      external_host: https://cloud.barnsfold.duckdns.org
 
   # ============================================================================
   # APPLICATIONS
   # ============================================================================
 
   - model: authentik_core.application
-    id: app-nextcloud
+    identifiers:
+      slug: nextcloud-internal
     attrs:
       name: Nextcloud
-      slug: nextcloud
-      provider:
-        !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud Proxy]]
+      slug: nextcloud-internal
+      provider: !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud Internal]]
       meta_launch_url: https://nas.home
-      meta_description: "Household file storage and collaboration"
       policy_engine_mode: any
-    identifiers:
-      slug: nextcloud
 
   - model: authentik_core.application
-    id: app-nextcloud-external
+    identifiers:
+      slug: nextcloud-external
     attrs:
       name: Nextcloud External
       slug: nextcloud-external
-      provider:
-        !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud External Proxy]]
+      provider: !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud External]]
       meta_launch_url: https://cloud.barnsfold.duckdns.org
-      meta_description: "Household file storage - external access"
       policy_engine_mode: any
-    identifiers:
-      slug: nextcloud-external
-
-  # ============================================================================
-  # OUTPOST (Embedded - uses Authentik's built-in proxy)
-  # ============================================================================
-
-  - model: authentik_outposts.outpost
-    id: outpost-embedded
-    attrs:
-      name: Embedded Outpost
-      type: proxy
-      providers:
-        - !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud Proxy]]
-        - !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud External Proxy]]
-      config:
-        authentik_host: http://localhost:9000
-        # Use embedded outpost - no separate container needed
-        kubernetes_disabled: true
-        docker_disabled: true
-    identifiers:
-      name: Embedded Outpost
