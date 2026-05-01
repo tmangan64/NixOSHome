@@ -19,6 +19,9 @@ in
         bind_hosts = [ "127.0.0.1" "192.168.0.66" ];
         port = 53;
 
+        # Disable rate limiting for home network (default is 20 req/s per client)
+        ratelimit = 0;
+
         upstream_dns = [
           "https://dns.cloudflare.com/dns-query"
           "https://dns.quad9.net/dns-query"
