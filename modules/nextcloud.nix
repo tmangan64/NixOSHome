@@ -51,6 +51,10 @@ in {
     phpOptions = {
       "opcache.interned_strings_buffer" = "16";
       "opcache.memory_consumption" = "256";
+      # Use combined CA bundle that includes Caddy's internal CA
+      # This allows OIDC connections to auth.home while keeping external CAs
+      "curl.cainfo" = "/run/caddy-ca/ca-bundle.crt";
+      "openssl.cafile" = "/run/caddy-ca/ca-bundle.crt";
     };
 
     maxUploadSize = "16G";
