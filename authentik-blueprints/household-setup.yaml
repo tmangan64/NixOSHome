@@ -31,6 +31,7 @@ entries:
   # ============================================================================
 
   - model: authentik_providers_proxy.proxyprovider
+    id: provider-nextcloud-internal
     identifiers:
       name: Nextcloud Internal
     attrs:
@@ -40,6 +41,7 @@ entries:
       external_host: https://nas.home
 
   - model: authentik_providers_proxy.proxyprovider
+    id: provider-nextcloud-external
     identifiers:
       name: Nextcloud External
     attrs:
@@ -58,7 +60,7 @@ entries:
     attrs:
       name: Nextcloud
       slug: nextcloud-internal
-      provider: !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud Internal]]
+      provider: !KeyOf provider-nextcloud-internal
       meta_launch_url: https://nas.home
       policy_engine_mode: any
 
@@ -68,6 +70,23 @@ entries:
     attrs:
       name: Nextcloud External
       slug: nextcloud-external
-      provider: !Find [authentik_providers_proxy.proxyprovider, [name, Nextcloud External]]
+      provider: !KeyOf provider-nextcloud-external
       meta_launch_url: https://cloud.barnsfold.duckdns.org
       policy_engine_mode: any
+
+  # ============================================================================
+  # OUTPOST (Embedded proxy outpost for forward auth)
+  # ============================================================================
+
+  - model: authentik_outposts.outpost
+    identifiers:
+      name: Embedded Outpost
+    attrs:
+      name: Embedded Outpost
+      type: proxy
+      providers:
+        - !KeyOf provider-nextcloud-internal
+        - !KeyOf provider-nextcloud-external
+      config:
+        authentik_host: https://auth.home/
+        authentik_host_insecure: true
