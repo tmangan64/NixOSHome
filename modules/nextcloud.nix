@@ -51,9 +51,6 @@ in {
     phpOptions = {
       "opcache.interned_strings_buffer" = "16";
       "opcache.memory_consumption" = "256";
-      # Use CA bundle that includes Caddy's internal CA for OIDC to auth.home
-      "curl.cainfo" = "/var/lib/caddy-ca/ca-bundle.crt";
-      "openssl.cafile" = "/var/lib/caddy-ca/ca-bundle.crt";
     };
 
     maxUploadSize = "16G";
@@ -66,6 +63,12 @@ in {
       port = 8080;
     }];
   };
+
+  # Configure PHP-FPM pool to trust Caddy's internal CA for OIDC
+  services.phpfpm.pools.nextcloud.phpOptions = ''
+    curl.cainfo = /var/lib/caddy-ca/ca-bundle.crt
+    openssl.cafile = /var/lib/caddy-ca/ca-bundle.crt
+  '';
 
   services.postgresql = {
     enable = true;
