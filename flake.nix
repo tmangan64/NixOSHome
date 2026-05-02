@@ -31,8 +31,6 @@
           ./modules/adguard.nix
           ./modules/caddy.nix
           ./modules/nextcloud.nix
-          ./modules/wireguard.nix
-          ./modules/duckdns.nix
         ];
       };
     };

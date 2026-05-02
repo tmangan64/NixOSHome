@@ -25,7 +25,7 @@
     # Static DNS entries so services on the host can resolve internal names
     # without depending on AdGuard rewrites being healthy.
     hosts = {
-      "127.0.0.1" = [ "dns.home" "auth.home" "nas.home" ];
+      "127.0.0.1" = [ "dns.home" "nas.home" ];
     };
 
     firewall = {
@@ -34,15 +34,13 @@
 
       # Deny by default
       allowedTCPPorts = [
-        2266  # Non-standard SSH port
+        2266  # SSH
         53    # AdGuard DNS
-        80    # Caddy HTTP redirect
         443   # Caddy HTTPS
-        3000  # AdGuard admin UI (LAN only via firewall scoping below)
+        3000  # AdGuard admin UI
       ];
       allowedUDPPorts = [
-        53      # AdGuard DNS
-        51820   # WireGuard VPN
+        53  # AdGuard DNS
       ];
 
       # Drop everything else, log it.

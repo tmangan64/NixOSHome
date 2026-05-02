@@ -3,15 +3,14 @@
 {
   system.autoUpgrade = {
     enable = true;
-    flake = "github:YOUR_USERNAME/homeserver-flake#homeserver";
+    flake = "github:tmangan64/NixOSHome#homeserver";
     flags = [
       "--update-input" "nixpkgs"
       "--no-write-lock-file"
-      "--commit-lock-file"
     ];
     dates = "04:00";
     randomizedDelaySec = "45min";
-    allowReboot = false;
+    allowReboot = true;
   };
 
   # Keep three previous generations available for rollback from the bootloader.

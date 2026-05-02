@@ -49,7 +49,6 @@ in
         rewrites = [
           { domain = "dns.home"; answer = "192.168.0.66"; enabled = true; }
           { domain = "nas.home"; answer = "192.168.0.66"; enabled = true; }
-          { domain = "auth.home"; answer = "192.168.0.66"; enabled = true; }
         ];
         protection_enabled = true;
         filtering_enabled = true;

@@ -1,9 +1,6 @@
 { config, lib, pkgs, ... }:
 
-let
-  duckdnsSubdomain = "barnsfold";
-  externalDomain = "cloud.${duckdnsSubdomain}.duckdns.org";
-in {
+{
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud33;
@@ -13,7 +10,7 @@ in {
 
     settings = {
       trusted_proxies = [ "127.0.0.1" ];
-      trusted_domains = [ "nas.home" externalDomain ];
+      trusted_domains = [ "nas.home" ];
       overwriteprotocol = "https";
       default_phone_region = "GB";
       maintenance_window_start = 1;

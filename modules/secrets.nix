@@ -17,10 +17,6 @@
         owner = "nextcloud";
         group = "nextcloud";
       };
-      "wireguard/private_key" = {};
-      "duckdns/token" = {
-        mode = "0444";  # World-readable since it's only used for IP updates
-      };
     };
   };
 }
