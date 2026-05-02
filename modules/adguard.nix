@@ -1,25 +1,22 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, userConfig, ... }:
 
 let
-  # Used to trigger a restart when settings change
   settingsFormat = pkgs.formats.yaml { };
   configFile = settingsFormat.generate "AdGuardHome.yaml" config.services.adguardhome.settings;
 in
 {
   services.adguardhome = {
     enable = true;
-    openFirewall = false;  # Firewall handled centrally in networking.nix
+    openFirewall = false;
     mutableSettings = false;
     host = "0.0.0.0";
     port = 3000;
 
     settings = {
       dns = {
-        # Bind to specific interfaces to avoid conflict with Podman's aardvark-dns on 10.89.0.1
-        bind_hosts = [ "127.0.0.1" "192.168.0.66" ];
+        bind_hosts = [ "127.0.0.1" userConfig.network.serverIP ];
         port = 53;
 
-        # Lower rate limiting for home network (default is 20 req/s per client)
         ratelimit = 10;
 
         upstream_dns = [
@@ -31,24 +28,20 @@ in
           "9.9.9.9"
         ];
 
-        # Privacy defaults
         anonymize_client_ip = true;
-        statistics_interval = 1;  # 1 day rolling stats only
+        statistics_interval = 1;
         querylog_enabled = false;
         querylog_file_enabled = false;
 
-        # Don't use /etc/hosts - manage internal names via rewrites.
         hostsfile_enabled = false;
 
-        # Block reverse lookup leaks for RFC1918 ranges.
         bogus_nxdomain = [ ];
       };
 
       filtering = {
-        # Internal name rewrites so .home hostnames resolve to the server.
         rewrites = [
-          { domain = "dns.home"; answer = "192.168.0.66"; enabled = true; }
-          { domain = "nas.home"; answer = "192.168.0.66"; enabled = true; }
+          { domain = "dns.home"; answer = userConfig.network.serverIP; enabled = true; }
+          { domain = "nas.home"; answer = userConfig.network.serverIP; enabled = true; }
         ];
         protection_enabled = true;
         filtering_enabled = true;
@@ -75,6 +68,5 @@ in
     };
   };
 
-  # Restart AdGuard when settings change
   systemd.services.adguardhome.restartTriggers = [ configFile ];
 }

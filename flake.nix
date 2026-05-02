@@ -16,9 +16,11 @@
   outputs = { self, nixpkgs, disko, sops-nix, ... }:
     let
       system = "x86_64-linux";
+      userConfig = import ./config.nix;
     in {
       nixosConfigurations.homeserver = nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit userConfig; };
         modules = [
           disko.nixosModules.disko
           sops-nix.nixosModules.sops
@@ -31,6 +33,7 @@
           ./modules/adguard.nix
           ./modules/caddy.nix
           ./modules/nextcloud.nix
+          ./modules/auto-upgrade.nix
         ];
       };
     };
