@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 
 let
-  # Change this to your DuckDNS subdomain (e.g., "myserver" for myserver.duckdns.org)
   duckdnsSubdomain = "barnsfold";
   externalDomain = "cloud.${duckdnsSubdomain}.duckdns.org";
 in {
@@ -9,10 +8,9 @@ in {
     enable = true;
     package = pkgs.nextcloud33;
     hostName = "nas.home";
-    https = true;  # we are reverse proxied behind Caddy with TLS
+    https = true;
     datadir = "/srv/data/nextcloud";
 
-    # Listen only on loopback. Caddy proxies to it.
     settings = {
       trusted_proxies = [ "127.0.0.1" ];
       trusted_domains = [ "nas.home" externalDomain ];

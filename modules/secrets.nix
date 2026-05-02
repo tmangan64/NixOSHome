@@ -17,8 +17,6 @@
         owner = "nextcloud";
         group = "nextcloud";
       };
-      "authentik/db_password" = {};
-      "authentik/secret_key" = {};
       "wireguard/private_key" = {};
       "duckdns/token" = {
         mode = "0444";  # World-readable since it's only used for IP updates
