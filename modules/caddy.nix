@@ -14,7 +14,7 @@
         '';
       };
 
-      # Nextcloud - direct access (authentication handled by Nextcloud itself)
+      # Nextcloud authentication handled by Nextcloud itself
       "nas.home" = {
         extraConfig = ''
           tls internal

@@ -8,7 +8,7 @@ in
 {
   services.adguardhome = {
     enable = true;
-    openFirewall = false;  # firewall handled centrally in networking.nix
+    openFirewall = false;  # Firewall handled centrally in networking.nix
     mutableSettings = false;
     host = "0.0.0.0";
     port = 3000;
@@ -19,8 +19,8 @@ in
         bind_hosts = [ "127.0.0.1" "192.168.0.66" ];
         port = 53;
 
-        # Disable rate limiting for home network (default is 20 req/s per client)
-        ratelimit = 0;
+        # Lower rate limiting for home network (default is 20 req/s per client)
+        ratelimit = 10;
 
         upstream_dns = [
           "https://dns.cloudflare.com/dns-query"
@@ -37,7 +37,7 @@ in
         querylog_enabled = false;
         querylog_file_enabled = false;
 
-        # Don't use /etc/hosts - we manage internal names via rewrites.
+        # Don't use /etc/hosts - manage internal names via rewrites.
         hostsfile_enabled = false;
 
         # Block reverse lookup leaks for RFC1918 ranges.

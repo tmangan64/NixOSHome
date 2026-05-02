@@ -26,6 +26,8 @@
     dig
     pciutils
     usbutils
+
+    # Hashing and security
     age
     sops
     ssh-to-age

@@ -39,7 +39,7 @@
     maxUploadSize = "16G";
   };
 
-  # Make Nextcloud listen on 8080 for Caddy to proxy.
+  # Make Nextcloud listen on 8080 for Caddy to proxy
   services.nginx.virtualHosts."nas.home" = {
     listen = [{
       addr = "127.0.0.1";
