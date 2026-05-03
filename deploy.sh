@@ -10,9 +10,6 @@
 
 set -euo pipefail
 
-# Must run as root
-[[ $EUID -eq 0 ]] || { echo "Run as root: sudo $0"; exit 1; }
-
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -99,6 +96,11 @@ if [[ ${#NEED_PKGS[@]} -gt 0 ]]; then
   chmod +x "$SCRIPT_PATH"
   exec nix shell --extra-experimental-features "nix-command flakes" "${NEED_PKGS[@]}" \
     --command bash -c "exec < /dev/tty; $SCRIPT_PATH"
+fi
+
+# Must run as root (checked after bootstrap so nix shell doesn't interfere)
+if [[ $EUID -ne 0 ]]; then
+  fail "This script must be run as root. Use: sudo bash $SCRIPT_PATH"
 fi
 
 export NIX_CONFIG="experimental-features = nix-command flakes"
@@ -197,9 +199,9 @@ if [[ "${STEP:-0}" -lt 3 ]]; then
   header "Step 3 — Install NixOS"
 
   # Loopback SSH setup
-  mkdir -p /root/.ssh
-  cat "${SSH_KEY_PATH}.pub" > /root/.ssh/authorized_keys
-  chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys
+  mkdir -p ~/.ssh
+  cat "${SSH_KEY_PATH}.pub" >> ~/.ssh/authorized_keys
+  chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys
   systemctl start sshd 2>/dev/null || true
   sleep 2
   ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts 2>/dev/null || true
