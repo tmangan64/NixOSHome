@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+# Must run as root
+[[ $EUID -eq 0 ]] || { echo "Run as root: sudo $0"; exit 1; }
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -72,6 +75,20 @@ else
 fi
 
 # ── Bootstrap packages ────────────────────────────────────────────────────────
+SCRIPT_PATH="/tmp/nixoshome_deploy.sh"
+
+# Save script to disk if running via curl pipe
+if [[ ! -f "$SCRIPT_PATH" ]]; then
+  if [[ -f "$0" && "$0" != "bash" && "$0" != "-bash" && "$0" != "/dev/stdin" ]]; then
+    cp "$0" "$SCRIPT_PATH"
+  else
+    # Running via pipe - read stdin to file (script already being read)
+    cat > "$SCRIPT_PATH"
+    chmod +x "$SCRIPT_PATH"
+    exec "$SCRIPT_PATH"
+  fi
+fi
+
 NEED_PKGS=()
 for cmd in age sops ssh-to-age mkpasswd; do
   command -v "$cmd" &>/dev/null || NEED_PKGS+=("nixpkgs#$cmd")
@@ -79,9 +96,6 @@ done
 
 if [[ ${#NEED_PKGS[@]} -gt 0 ]]; then
   info "Fetching tools: ${NEED_PKGS[*]}"
-  SCRIPT_PATH="/tmp/nixoshome_deploy.sh"
-  [[ -f "$0" && "$0" != "bash" ]] && cp "$0" "$SCRIPT_PATH" || \
-    curl -sSL "https://raw.githubusercontent.com/tmangan64/NixOSHome/main/deploy.sh" -o "$SCRIPT_PATH"
   chmod +x "$SCRIPT_PATH"
   exec nix shell --extra-experimental-features "nix-command flakes" "${NEED_PKGS[@]}" \
     --command bash -c "exec < /dev/tty; $SCRIPT_PATH"
