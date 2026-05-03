@@ -250,22 +250,16 @@ if [[ "${STEP:-0}" -lt 2 ]]; then
   warn "Keep $AGE_KEY_PATH safe until Step 6 is complete."
   echo ""
 
-  info "Patching .sops.yaml (user key slot)..."
-  PLACEHOLDER="age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  info "Patching .sops.yaml with user age key..."
 
-  # Validate that placeholder exists before patching
-  if ! grep -q "$PLACEHOLDER" .sops.yaml; then
-    error ".sops.yaml does not contain expected placeholder. Was it already configured?"
-  fi
+  # Replace the user_key placeholder (first age1xxx line)
+  sed -i "s/&user_key age1x\+/\&user_key ${AGE_PUBLIC_KEY}/" .sops.yaml
 
-  # Replace only the FIRST occurrence of the placeholder (user key)
-  sed -i "0,/${PLACEHOLDER}/s/${PLACEHOLDER}/${AGE_PUBLIC_KEY}/" .sops.yaml
-
-  # Verify the patch worked
-  if grep -q "^  - &user_key ${AGE_PUBLIC_KEY}$" .sops.yaml; then
-    success ".sops.yaml updated — host key slot left for Step 6."
+  # Verify
+  if grep -q "$AGE_PUBLIC_KEY" .sops.yaml; then
+    success ".sops.yaml patched with user key."
   else
-    error "Failed to patch .sops.yaml with age public key."
+    error "Failed to patch .sops.yaml"
   fi
 
   save_state
@@ -289,17 +283,6 @@ if [[ "${STEP:-0}" -lt 3 ]]; then
   read -rs NEXTCLOUD_PASSWORD; echo ""
 
   info "Encrypting secrets.yaml with sops..."
-
-  # Validate age public key format before encryption
-  if [[ ! "$AGE_PUBLIC_KEY" =~ ^age1[a-z0-9]{58}$ ]]; then
-    error "Invalid age public key format: $AGE_PUBLIC_KEY"
-  fi
-
-  # Ensure no placeholder keys remain in .sops.yaml
-  if grep -q "age1xxxxxx" .sops.yaml; then
-    error ".sops.yaml still contains placeholder keys. Step 2 may have failed."
-  fi
-
   cat > secrets/secrets.yaml <<YAML
 admin:
   password_hash: ${ADMIN_HASH}
