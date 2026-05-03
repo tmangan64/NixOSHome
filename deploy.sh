@@ -144,10 +144,11 @@ if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
   fi
 
   # Re-exec inside nix shell with required packages
+  # Use bash -c with explicit /dev/tty to preserve interactive input
   exec nix shell \
     --extra-experimental-features "nix-command flakes" \
     nixpkgs#age nixpkgs#sops nixpkgs#ssh-to-age nixpkgs#mkpasswd \
-    --command "$SCRIPT_PATH"
+    --command bash -c "exec < /dev/tty; $SCRIPT_PATH"
 fi
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
