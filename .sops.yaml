@@ -17,4 +17,4 @@ creation_rules:
     key_groups:
       - age:
           - *user_key
-          - *host_homeserver
+          # - *host_homeserver  # Uncomment after server deployment
