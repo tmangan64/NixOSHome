@@ -1,0 +1,3 @@
+# Host age public key (derived from SSH host key)
+# This is automatically used by SOPS via the SSH key
+age1pgrhvs309lu6mk0zxrpgfzesxjzquu76vss0m06jxk23nk56eutqxwzl5a
