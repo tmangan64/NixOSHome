@@ -117,13 +117,46 @@ fi
 
 echo ""
 
+# ── Nix shell bootstrap ───────────────────────────────────────────────────────
+# Required packages that may not be on the minimal ISO
+REQUIRED_PKGS=(age sops ssh-to-age mkpasswd)
+MISSING_PKGS=()
+
+for cmd in "${REQUIRED_PKGS[@]}"; do
+  if ! command -v "$cmd" &>/dev/null; then
+    MISSING_PKGS+=("$cmd")
+  fi
+done
+
+if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
+  info "Missing tools: ${MISSING_PKGS[*]}"
+  info "Fetching required packages via nix shell..."
+  echo ""
+
+  # Download the script to a temp file if running via pipe (curl | bash)
+  SCRIPT_PATH="/tmp/nixoshome_deploy.sh"
+  if [[ ! -f "$SCRIPT_PATH" ]] || [[ "$0" == "bash" ]] || [[ "$0" == "-bash" ]]; then
+    curl -sSL "https://raw.githubusercontent.com/tmangan64/NixOSHome/main/deploy.sh" -o "$SCRIPT_PATH"
+    chmod +x "$SCRIPT_PATH"
+  elif [[ -f "$0" ]]; then
+    cp "$0" "$SCRIPT_PATH"
+    chmod +x "$SCRIPT_PATH"
+  fi
+
+  # Re-exec inside nix shell with required packages
+  exec nix shell \
+    --extra-experimental-features "nix-command flakes" \
+    nixpkgs#age nixpkgs#sops nixpkgs#ssh-to-age nixpkgs#mkpasswd \
+    --command "$SCRIPT_PATH"
+fi
+
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 if [[ "${STEP:-0}" -lt 1 ]]; then
   header "Checking prerequisites"
 
-  for cmd in git nix ssh-keygen age sops mkpasswd curl; do
+  for cmd in git nix ssh-keygen age sops mkpasswd curl ssh-to-age; do
     if ! command -v "$cmd" &>/dev/null; then
-      error "Required tool not found: $cmd — are you on the NixOS minimal ISO?"
+      error "Required tool not found: $cmd"
     fi
   done
 
