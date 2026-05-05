@@ -1,0 +1,12 @@
+keys:
+  # Your workstation age key - generate with: age-keygen -o ~/.config/sops/age/keys.txt
+  - &user_key age1r2w449ujx5eghv9umwa2zf00t3cattu2wqk2a57slvahuwkr7qfqn8vs7s
+  # Server's SSH host key (homeserver) - derived via ssh-to-age
+  - &host_homeserver age17v8j6pf64hus33mayml5fupwnr78swzzf73p89zqt42jnjwhwc2q57anh5
+
+creation_rules:
+  - path_regex: secrets/secrets\.yaml$
+    key_groups:
+      - age:
+          - *user_key
+          - *host_homeserver
