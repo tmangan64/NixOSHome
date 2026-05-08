@@ -58,7 +58,20 @@ nix-shell -p mkpasswd --run "mkpasswd -m sha-512"
 
 ---
 
-## Step 3: Run the Generator
+## Step 3: Create Your Age Key
+
+Generate an age key for encrypting secrets:
+
+```bash
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt
+```
+
+Copy your public key (starts with `age1...`) - you'll need it for the generator.
+
+---
+
+## Step 4: Run the Generator
 
 ```bash
 cd generator
@@ -68,44 +81,15 @@ nix-shell --run "python nixgen.py"
 Fill in each tab:
 1. **Host & Locale** - Hostname, timezone, language
 2. **Network** - IP address, gateway, interface
-3. **SSH & User** - SSH port, public key, password hash, Nextcloud password
+3. **SSH & User** - SSH port, public key, password hash, Nextcloud password, age public key
 4. **Services** - Nextcloud and AdGuard settings
 5. **Disks** - OS disk and data partition paths
 
-Click **Generate** to create `options/options.nix` and `options/secrets.yaml`.
+Click **Generate** to create the configuration files.
 
 ---
 
-## Step 4: Set Up Secret Encryption
-
-### Create your age key
-
-```bash
-mkdir -p ~/.config/sops/age
-age-keygen -o ~/.config/sops/age/keys.txt
-```
-
-Note your public key (starts with `age1...`).
-
-### Configure SOPS
-
-```bash
-cp .sops.yaml.template options/.sops.yaml
-```
-
-Edit `options/.sops.yaml`:
-```yaml
-keys:
-  - &user_key age1abc...  # Replace with YOUR public key
-
-creation_rules:
-  - path_regex: secrets\.yaml$
-    key_groups:
-      - age:
-          - *user_key
-```
-
-### Encrypt secrets
+## Step 5: Encrypt Secrets
 
 ```bash
 cd options
@@ -115,7 +99,7 @@ cd ..
 
 ---
 
-## Step 5: Push to GitHub
+## Step 6: Push to GitHub
 
 Create a new repository on GitHub, then:
 
@@ -130,7 +114,7 @@ The encrypted secrets are safe to commit.
 
 ---
 
-## Step 6: Deploy with nixos-anywhere
+## Step 7: Deploy with nixos-anywhere
 
 From your workstation, deploy to the target:
 
@@ -149,7 +133,7 @@ Replace:
 
 ---
 
-## Step 7: Add Host Key to SOPS
+## Step 8: Add Host Key to SOPS
 
 After deployment, get the host's age key:
 
@@ -190,7 +174,7 @@ git push
 
 ---
 
-## Step 8: Final Rebuild
+## Step 9: Final Rebuild
 
 SSH into your server:
 
@@ -206,7 +190,7 @@ sudo nixos-rebuild switch --flake github:YOUR_USER/NixOSHome#HOSTNAME
 
 ---
 
-## Step 9: Verify Services
+## Step 10: Verify Services
 
 After successful rebuild:
 
@@ -256,7 +240,6 @@ journalctl -u SERVICE_NAME -f
 ```
 NixOSHome/
 ├── flake.nix                 # Main flake definition
-├── .sops.yaml.template       # SOPS template (copy to options/)
 ├── config/                   # System configuration
 │   ├── configuration.nix
 │   ├── hardware.nix
@@ -269,7 +252,7 @@ NixOSHome/
 │   ├── caddy.nix
 │   ├── nextcloud.nix
 │   └── auto-upgrade.nix
-├── options/                  # Your configuration (generated)
+├── options/                  # Created by generator
 │   ├── options.nix
 │   ├── secrets.yaml
 │   └── .sops.yaml

@@ -249,6 +249,31 @@ class NixGenApp:
             "Plain-text password for Nextcloud admin login", 10
         )
 
+        # Age key section
+        ttk.Separator(frame, orient="horizontal").grid(row=11, column=0, columnspan=2, sticky="ew", pady=10)
+
+        age_label = ttk.Label(
+            frame,
+            text="SOPS Encryption Key",
+            font=("TkDefaultFont", 10, "bold")
+        )
+        age_label.grid(row=12, column=0, columnspan=2, sticky="w", pady=5)
+
+        age_instructions = ttk.Label(
+            frame,
+            text="Generate an age key:\n  mkdir -p ~/.config/sops/age\n"
+                 "  age-keygen -o ~/.config/sops/age/keys.txt\n"
+                 "Then paste the PUBLIC key (starts with age1...) below.",
+            foreground="gray",
+            justify="left"
+        )
+        age_instructions.grid(row=13, column=0, columnspan=2, sticky="w", pady=5)
+
+        self.fields["agePublicKey"] = self.create_labeled_entry(
+            frame, "Age Public Key:", "",
+            "Your age public key for encrypting secrets (starts with age1...)", 14, width=60
+        )
+
     def create_services_tab(self):
         """Create the Services tab."""
         frame = self.services_frame
@@ -408,6 +433,13 @@ class NixGenApp:
         if not nc_password:
             errors.append("Nextcloud admin password is required")
 
+        # Validate age public key
+        age_key = self.fields["agePublicKey"].get().strip()
+        if not age_key:
+            errors.append("Age public key is required for encrypting secrets")
+        elif not age_key.startswith("age1"):
+            errors.append("Age public key must start with 'age1'")
+
         # Validate hostname (alphanumeric and hyphens only)
         hostname = self.fields["hostname"].get()
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9-]*$", hostname):
@@ -502,6 +534,22 @@ nextcloud:
 """
         return content
 
+    def generate_sops_yaml(self):
+        """Generate the .sops.yaml configuration."""
+        age_key = self.fields["agePublicKey"].get().strip()
+
+        content = f"""\
+keys:
+  - &user_key {age_key}
+
+creation_rules:
+  - path_regex: secrets\\.yaml$
+    key_groups:
+      - age:
+          - *user_key
+"""
+        return content
+
     def generate(self):
         """Generate the configuration files."""
         # Validate input
@@ -524,6 +572,11 @@ nextcloud:
             secrets_path = self.options_dir / "secrets.yaml"
             secrets_path.write_text(secrets_content)
 
+            # Generate .sops.yaml
+            sops_content = self.generate_sops_yaml()
+            sops_path = self.options_dir / ".sops.yaml"
+            sops_path.write_text(sops_content)
+
             # Show success message with next steps
             success_msg = f"""\
 Files generated successfully!
@@ -531,25 +584,20 @@ Files generated successfully!
 Created:
   - {options_path}
   - {secrets_path}
+  - {sops_path}
 
-IMPORTANT: Next Steps
+Next Steps:
 
-1. The secrets.yaml file contains unencrypted secrets.
-   You MUST encrypt it with SOPS before committing.
-
-2. Configure SOPS:
-   - Copy .sops.yaml.template to options/.sops.yaml
-   - Add your age public key (from: age-keygen)
-
-3. Encrypt secrets:
+1. Encrypt secrets:
    cd {self.options_dir}
-   sops --encrypt --in-place secrets.yaml
+   nix-shell -p sops --run "sops --encrypt --in-place secrets.yaml"
 
-4. Deploy with nixos-anywhere:
+2. Deploy with nixos-anywhere:
    nix run github:nix-community/nixos-anywhere -- \\
      --flake .#hostname root@target-ip
 
-See README.md for detailed instructions.
+3. After deploy, add the host key to .sops.yaml
+   (see README.md for details)
 """
             messagebox.showinfo("Success", success_msg)
             self.status_var.set(f"Generated: {options_path}")
@@ -586,6 +634,7 @@ See README.md for detailed instructions.
             "dataDisk": "/dev/sda1",
             "dataMount": "/srv/data",
             "nextcloudPassword": "",
+            "agePublicKey": "",
         }
 
         text_defaults = {
