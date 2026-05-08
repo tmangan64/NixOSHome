@@ -1,0 +1,29 @@
+# SOPS Configuration Template
+# ---------------------------
+# Copy this file to flake/options/.sops.yaml and replace the placeholder keys.
+#
+# Generate your workstation age key:
+#   mkdir -p ~/.config/sops/age
+#   age-keygen -o ~/.config/sops/age/keys.txt
+#   cat ~/.config/sops/age/keys.txt  # Copy the public key
+#
+# Get the host's age key (after first deploy):
+#   ssh user@host "cat /etc/ssh/ssh_host_ed25519_key.pub" | ssh-to-age
+#
+# Or from your local known_hosts:
+#   ssh-keyscan -p PORT HOST 2>/dev/null | ssh-to-age
+
+keys:
+  # Your workstation age key (for encrypting secrets)
+  - &user_key <YOUR_AGE_PUBLIC_KEY>
+
+  # Server's SSH host key converted to age format
+  # (Add this after first nixos-anywhere deploy)
+  - &host_key <HOST_AGE_PUBLIC_KEY>
+
+creation_rules:
+  - path_regex: secrets\.yaml$
+    key_groups:
+      - age:
+          - *user_key
+          - *host_key
