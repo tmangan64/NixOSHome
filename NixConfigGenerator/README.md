@@ -1,245 +1,232 @@
 # NixOS Config Generator
 
-A self-contained Java Swing GUI application that generates complete NixOS configurations with SOPS-encrypted secrets for home server deployments.
+A Python CLI tool that generates complete NixOS flake configurations for home server deployments.
 
-## Project Overview
-
-This tool streamlines the creation of NixOS configurations by:
-1. Collecting server parameters through a GUI
-2. Generating all necessary cryptographic keys (SSH, age)
-3. Producing a complete, deployable NixOS flake configuration
-
-The generated output is ready for deployment with `nixos-anywhere` and includes all SOPS-encrypted secrets.
-
-## Features
-
-- **Complete NixOS Configuration**: Generates all files needed for a home server deployment
-- **Self-Contained Cryptography**: All operations done in Java with BouncyCastle:
-  - Ed25519 SSH host key generation (OpenSSH format)
-  - X25519 age key generation (bech32 encoded)
-  - SSH-to-age key conversion
-  - SHA-512 crypt password hashing
-  - Age/SOPS encryption (ChaCha20-Poly1305)
-- **GUI Interface**: Easy-to-use tabbed interface for configuration
-- **Production-Ready Output**: Generates configs identical to production structure
-
-## Prerequisites
-
-- Java 17 or later
-- Maven 3.6 or later (or use `nix-shell -p maven`)
-
-## Building
+## Quick Start
 
 ```bash
-cd NixConfigGenerator
-mvn clean package
+# Enter development environment
+nix-shell
+
+# Run the generator
+python nixgen.py
 ```
 
-Or with Nix:
-```bash
-nix-shell -p maven --run "mvn clean package"
+## Requirements
+
+- Python 3.12+ with `cryptography` library
+- `sops` and `age` tools for encrypting secrets
+- `nix` for deployment
+
+All dependencies are provided by `shell.nix`.
+
+## Workflow Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         YOUR WORKSTATION                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│  1. python nixgen.py          → Creates output/ with config + secrets  │
+│  2. sops -e -i secrets.yaml   → Encrypts secrets with age              │
+│  3. Deploy to target          → nixos-anywhere / manual install        │
+└─────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          TARGET SERVER                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  - Receives NixOS configuration                                        │
+│  - SSH host key used to decrypt SOPS secrets at boot                   │
+│  - Runs AdGuard, Caddy, Nextcloud, etc.                                │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-This creates a self-contained JAR file at `target/NixConfigGenerator-1.0.0.jar` (~8MB with dependencies).
+## Step-by-Step Deployment
 
-## Running
+### Step 1: Generate Configuration (on YOUR WORKSTATION)
 
 ```bash
-java -jar target/NixConfigGenerator-1.0.0.jar
+nix-shell
+python nixgen.py
+```
+
+Follow the prompts to enter:
+- Network settings (hostname, IP, gateway, SSH port)
+- User credentials (admin username, password, SSH public key)
+- System settings (timezone, locale)
+
+This creates:
+```
+output/
+├── flake.nix
+├── .sops.yaml
+├── hosts/homeserver/
+│   ├── configuration.nix
+│   ├── hardware.nix
+│   └── disko.nix
+├── modules/
+│   ├── users.nix
+│   ├── networking.nix
+│   ├── secrets.nix
+│   ├── adguard.nix
+│   ├── caddy.nix
+│   ├── nextcloud.nix
+│   └── auto-upgrade.nix
+├── secrets/
+│   └── secrets.yaml          # UNENCRYPTED - must encrypt before commit!
+└── keys/
+    ├── age_key.txt           # Your workstation's age key
+    ├── ssh_host_ed25519_key  # Server's SSH host key
+    └── ssh_host_ed25519_key.pub
+```
+
+### Step 2: Encrypt Secrets (on YOUR WORKSTATION)
+
+```bash
+# Set up your age key for sops
+mkdir -p ~/.config/sops/age
+cp output/keys/age_key.txt ~/.config/sops/age/keys.txt
+chmod 600 ~/.config/sops/age/keys.txt
+
+# Encrypt the secrets file in-place
+cd output
+sops -e -i secrets/secrets.yaml
+```
+
+Verify encryption worked:
+```bash
+cat secrets/secrets.yaml  # Should show ENC[AES256_GCM,...] values
+```
+
+### Step 3: Deploy to Target Server
+
+#### Option A: nixos-anywhere (Fresh Install)
+
+**Run from YOUR WORKSTATION.** Target must be accessible via SSH (booted into NixOS installer or has SSH enabled).
+
+```bash
+cd output
+
+# Deploy (this wipes the target disk!)
+nix run github:nix-community/nixos-anywhere -- \
+  --flake .#homeserver \
+  root@<target-ip>
+```
+
+#### Option B: Manual Install from NixOS ISO
+
+**Step 3a: Copy config (from YOUR WORKSTATION)**
+```bash
+scp -r output/ nixos@<target-ip>:/tmp/config
+```
+
+**Step 3b: Install (on TARGET SERVER, booted from NixOS ISO)**
+```bash
+# Partition disks using disko
+sudo nix --experimental-features "nix-command flakes" run \
+  github:nix-community/disko -- --mode disko /tmp/config/hosts/homeserver/disko.nix
+
+# Install NixOS
+sudo nixos-install --flake /tmp/config#homeserver
+
+# Copy SSH host key (if using the generated one)
+sudo cp /tmp/config/keys/ssh_host_ed25519_key* /mnt/etc/ssh/
+
+reboot
+```
+
+#### Option C: Update Existing NixOS System
+
+**Step 3a: Copy config (from YOUR WORKSTATION)**
+```bash
+scp -r output/ admin@<target-ip>:/tmp/config
+```
+
+**Step 3b: Apply config (on TARGET SERVER)**
+```bash
+sudo cp -r /tmp/config/* /etc/nixos/
+sudo nixos-rebuild switch --flake /etc/nixos#homeserver
+```
+
+### Step 4: Post-Deployment
+
+**Update hardware.nix (on TARGET SERVER or from WORKSTATION via SSH):**
+```bash
+# Generate actual hardware config
+ssh admin@<server-ip> "nixos-generate-config --show-hardware-config" > output/hosts/homeserver/hardware.nix
+```
+
+**Push to Git (on YOUR WORKSTATION):**
+```bash
+cd output
+
+# Remove keys before committing (keep backup!)
+cp -r keys/ ~/nixos-keys-backup/
+rm -rf keys/
+
+git init
+git add -A
+git commit -m "Initial NixOS configuration"
+git remote add origin git@github.com:user/repo.git
+git push -u origin main
 ```
 
 ## Configuration Fields
 
-### Network Tab
 | Field | Description | Example |
 |-------|-------------|---------|
 | Hostname | Server hostname | `homeserver` |
 | Domain | Local domain (creates dns.{domain}, nas.{domain}) | `home` |
-| Network Interface | Network interface name | `enp3s0` |
-| Static IP | Server's static IP address | `192.168.0.66` |
-| Prefix Length | Network prefix (24 = 255.255.255.0) | `24` |
-| Gateway | Default gateway | `192.168.0.1` |
-| SSH Port | SSH server port (non-standard recommended) | `2266` |
-
-### User Tab
-| Field | Description |
-|-------|-------------|
-| Admin Username | Administrator account name |
-| Admin Password | Password (hashed with SHA-512 crypt) |
-| SSH Public Key | Your SSH public key for passwordless login |
-| Nextcloud Password | Nextcloud admin password (encrypted with age) |
-
-### System Tab
-| Field | Description | Example |
-|-------|-------------|---------|
+| Network Interface | NIC name (check with `ip link`) | `enp3s0` |
+| Static IP | Server's IP address | `192.168.0.66` |
+| Prefix Length | Subnet mask (24 = /24 = 255.255.255.0) | `24` |
+| Gateway | Router IP | `192.168.0.1` |
+| SSH Port | SSH port (non-standard recommended) | `2266` |
+| Admin Username | Your admin account | `admin` |
+| Admin Password | Login password (hashed with SHA-512) | |
+| SSH Public Key | Your public key for passwordless SSH | `ssh-ed25519 AAAA...` |
+| Nextcloud Password | Nextcloud admin password | |
 | Timezone | System timezone | `Europe/London` |
 | Locale | System locale | `en_GB.UTF-8` |
-| Console Keymap | Console keyboard layout | `uk` |
-| Phone Region | ISO 3166-1 alpha-2 code for Nextcloud | `GB` |
-| GitHub Flake URL | Auto-upgrade flake URL | `github:user/repo#hostname` |
-
-## Generated Output
-
-```
-output-folder/
-├── flake.nix                 # Main flake configuration
-├── .sops.yaml                # SOPS key configuration
-├── hosts/{hostname}/
-│   ├── configuration.nix     # Host configuration (boot, SSH, packages)
-│   ├── hardware.nix          # Hardware configuration (CPU, modules)
-│   └── disko.nix             # Disk layout (NVMe + SATA)
-├── modules/
-│   ├── users.nix             # User management with SOPS password
-│   ├── networking.nix        # Static IP, firewall, DNS
-│   ├── secrets.nix           # SOPS integration
-│   ├── adguard.nix           # AdGuard Home DNS filtering
-│   ├── caddy.nix             # Caddy reverse proxy
-│   ├── nextcloud.nix         # Nextcloud with PostgreSQL + Redis
-│   └── auto-upgrade.nix      # Automatic flake updates
-├── secrets/
-│   └── secrets.yaml          # SOPS-encrypted secrets
-└── keys/
-    ├── ssh_host_ed25519_key      # SSH host private key
-    ├── ssh_host_ed25519_key.pub  # SSH host public key
-    ├── age_key.txt               # Workstation age key
-    └── host_age_public.txt       # Host age public key (reference)
-```
-
-## Workflow: Generated Config to Production
-
-The generator produces a **TestConfig**-style output. To convert to production (**ActiveConfig**):
-
-### Generated (TestConfig) vs Production (ActiveConfig)
-
-| Aspect | Generated | Production |
-|--------|-----------|------------|
-| `keys/` directory | Included | Removed (stored securely elsewhere) |
-| `flake.lock` | Not included | Added after first `nix flake update` |
-| GitHub flake URL | Placeholder or custom | Real repository URL |
-| Age keys | Freshly generated | Your actual deployment keys |
-| Secrets | Encrypted with generated keys | Re-encrypted with production keys |
-
-### Steps to Production
-
-1. **Generate initial configuration** using the GUI
-
-2. **Secure the keys**:
-   ```bash
-   chmod 700 output-folder/keys
-   chmod 600 output-folder/keys/*
-   ```
-
-3. **Set up workstation age key**:
-   ```bash
-   mkdir -p ~/.config/sops/age
-   cp output-folder/keys/age_key.txt ~/.config/sops/age/keys.txt
-   chmod 600 ~/.config/sops/age/keys.txt
-   ```
-
-4. **Push to GitHub repository**:
-   ```bash
-   cd output-folder
-   git init
-   git add -A
-   git commit -m "Initial NixOS configuration"
-   git remote add origin git@github.com:user/repo.git
-   git push -u origin main
-   ```
-
-5. **Update flake URL** in `modules/auto-upgrade.nix`:
-   ```nix
-   flake = "github:YOUR-USERNAME/YOUR-REPO#hostname";
-   ```
-
-6. **Deploy with nixos-anywhere**:
-   ```bash
-   nix run github:nix-community/nixos-anywhere -- \
-     --flake .#hostname \
-     --extra-files keys \
-     root@target-ip
-   ```
-
-7. **Post-deployment**: Update `hardware.nix` with actual hardware config:
-   ```bash
-   ssh admin@server "nixos-generate-config --show-hardware-config"
-   ```
-
-8. **Remove keys from repo** (keep backup elsewhere):
-   ```bash
-   rm -rf keys/
-   git add -A && git commit -m "Remove keys from repo"
-   ```
+| Console Keymap | Keyboard layout | `uk` |
+| Phone Region | ISO 3166-1 for Nextcloud | `GB` |
+| GitHub Flake URL | For auto-upgrades (optional) | `github:user/repo#homeserver` |
 
 ## Services Included
 
-| Service | Purpose | Port |
-|---------|---------|------|
-| **OpenSSH** | Hardened SSH with key-only auth | Custom (default 2266) |
-| **AdGuard Home** | DNS filtering and ad blocking | 53 (DNS), 3000 (UI) |
-| **Caddy** | Reverse proxy with internal TLS | 443 |
-| **Nextcloud** | Self-hosted file storage | 8080 (internal) |
-| **Fail2ban** | Brute-force protection | - |
-| **PostgreSQL** | Database for Nextcloud | - |
-| **Redis** | Caching for Nextcloud | - |
+| Service | Purpose | Access |
+|---------|---------|--------|
+| OpenSSH | Remote access (key-only) | Port from config |
+| AdGuard Home | DNS filtering + ad blocking | dns.{domain} |
+| Caddy | Reverse proxy with auto-TLS | HTTPS |
+| Nextcloud | File storage | nas.{domain} |
+| PostgreSQL | Nextcloud database | Internal |
+| Redis | Nextcloud cache | Internal |
+| Fail2ban | Brute-force protection | - |
 
-## Security Features
+## Keys Explained
 
-- **SSH**: Key-only authentication, root login disabled, non-standard port
-- **Firewall**: Default-deny with explicit port allowlist
-- **Secrets**: SOPS encryption with age (X25519 + ChaCha20-Poly1305)
-- **Passwords**: SHA-512 crypt hashing (5000 rounds)
-- **DNS**: Local AdGuard for privacy and ad blocking
-- **TLS**: Internal certificates via Caddy for local services
-- **Updates**: Automatic system upgrades from GitHub flake
+| Key | Location | Purpose |
+|-----|----------|---------|
+| `age_key.txt` | Your workstation `~/.config/sops/age/keys.txt` | Decrypt/edit secrets |
+| `ssh_host_ed25519_key` | Server `/etc/ssh/` | Server identity + SOPS decryption |
+| Your SSH public key | Server `~/.ssh/authorized_keys` | Passwordless SSH login |
 
-## Architecture
+**Important:** The server decrypts SOPS secrets at boot using its SSH host key (converted to age format). This is configured in `.sops.yaml`.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     NixOS Server                            │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────┐  ┌─────────┐  ┌──────────────────────────────┐ │
-│  │ AdGuard │  │  Caddy  │  │         Nextcloud            │ │
-│  │  :53    │  │  :443   │──│  nginx:8080 + PostgreSQL     │ │
-│  │  :3000  │  │         │  │  + Redis                     │ │
-│  └─────────┘  └─────────┘  └──────────────────────────────┘ │
-│       │            │                    │                   │
-│       └────────────┴────────────────────┘                   │
-│                         │                                   │
-│  ┌──────────────────────┴───────────────────────────────┐   │
-│  │                    SOPS Secrets                      │   │
-│  │   Decrypted at boot via SSH host key → age          │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+## Editing Secrets After Deployment
+
+On YOUR WORKSTATION (with age_key.txt in place):
+```bash
+cd /path/to/nixos-config
+sops secrets/secrets.yaml  # Opens decrypted in $EDITOR, re-encrypts on save
+git add -A && git commit -m "Update secrets" && git push
 ```
 
-## Project Structure
-
-```
-NixConfigGenerator/
-├── pom.xml                           # Maven build with BouncyCastle
-├── src/main/java/nixgen/
-│   ├── Main.java                     # Entry point
-│   ├── gui/
-│   │   ├── MainFrame.java            # Tabbed window
-│   │   ├── NetworkPanel.java         # Network form
-│   │   ├── UserPanel.java            # Credentials form
-│   │   ├── SystemPanel.java          # Timezone, locale
-│   │   └── OutputPanel.java          # Directory selection
-│   ├── model/
-│   │   └── ConfigData.java           # Configuration POJO
-│   ├── crypto/
-│   │   ├── Bech32.java               # Bech32 encoding
-│   │   ├── Ed25519KeyGen.java        # SSH key generation
-│   │   ├── X25519KeyGen.java         # Age key generation
-│   │   ├── SshToAge.java             # Ed25519 → X25519
-│   │   ├── Sha512Crypt.java          # Password hashing
-│   │   ├── AgeEncrypt.java           # ChaCha20-Poly1305
-│   │   └── SopsYaml.java             # SOPS YAML generation
-│   └── generator/
-│       ├── ConfigGenerator.java      # Orchestrator
-│       └── templates/                # Nix template classes
-└── README.md
+On TARGET SERVER:
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#homeserver
+# Or if using auto-upgrade, just wait for the next update cycle
 ```
 
 ## License

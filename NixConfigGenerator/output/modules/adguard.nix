@@ -16,7 +16,7 @@ in
     settings = {
       dns = {
         # Bind to specific interfaces to avoid conflict with Podman's aardvark-dns on 10.89.0.1
-        bind_hosts = [ "127.0.0.1" "192.128.0.66" ];
+        bind_hosts = [ "127.0.0.1" "192.168.0.66" ];
         port = 53;
 
         # Lower rate limiting for home network (default is 20 req/s per client)
@@ -47,8 +47,8 @@ in
       filtering = {
         # Internal name rewrites so .home hostnames resolve to the server.
         rewrites = [
-          { domain = "dns.home"; answer = "192.128.0.66"; enabled = true; }
-          { domain = "nas.home"; answer = "192.128.0.66"; enabled = true; }
+          { domain = "dns.home"; answer = "192.168.0.66"; enabled = true; }
+          { domain = "nas.home"; answer = "192.168.0.66"; enabled = true; }
         ];
         protection_enabled = true;
         filtering_enabled = true;

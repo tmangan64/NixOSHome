@@ -11,7 +11,7 @@
     # Password hash from sops - generate with: mkpasswd -m sha-512
     hashedPasswordFile = config.sops.secrets."admin/password_hash".path;
     openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHEr9l0xPvco+x1zz2X5skaIwpjtI0+QGOELm/KtV5d kiroshi[C"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHEr9l0xPvco+x1zz2X5skaIwpjtI0+QGOELm/KtV5d kiroshi"
     ];
   };
 

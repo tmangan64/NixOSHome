@@ -6,22 +6,16 @@ Generates NixOS flake configurations for home servers.
 Dependencies: cryptography (pip install cryptography)
 """
 
-import os
 import secrets
 import hashlib
-import struct
 import base64
-import subprocess
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305, AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import hashes
 
 
 @dataclass
@@ -75,9 +69,10 @@ def bech32_create_checksum(hrp, data):
     return [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
 
 def bech32_encode(hrp, data_bytes):
+    """Encode data as Bech32. Format: <hrp>1<data><checksum>"""
     data = convertbits(data_bytes, 8, 5, True)
     checksum = bech32_create_checksum(hrp, data)
-    return hrp + ''.join(BECH32_CHARSET[d] for d in data + checksum)
+    return hrp + '1' + ''.join(BECH32_CHARSET[d] for d in data + checksum)
 
 def convertbits(data, frombits, tobits, pad=True):
     acc, bits, ret = 0, 0, []
@@ -224,8 +219,8 @@ def generate_age_key() -> tuple[str, str, X25519PrivateKey]:
         format=serialization.PublicFormat.Raw
     )
 
-    private_bech32 = bech32_encode("age-secret-key-1", private_bytes).upper()
-    public_bech32 = bech32_encode("age1", public_bytes)
+    private_bech32 = bech32_encode("age-secret-key-", private_bytes).upper()
+    public_bech32 = bech32_encode("age", public_bytes)
 
     timestamp = datetime.now(timezone.utc).isoformat()
     key_file = f"# created: {timestamp}\n# public key: {public_bech32}\n{private_bech32}\n"
@@ -258,115 +253,17 @@ def ed25519_to_x25519_pub(ed25519_public_key) -> str:
     # Convert back to bytes (little-endian)
     x25519_pub_bytes = u.to_bytes(32, 'little')
 
-    return bech32_encode("age1", x25519_pub_bytes)
+    return bech32_encode("age", x25519_pub_bytes)
 
 
-# === Age Encryption (for SOPS secrets) ===
+# === Plaintext Secrets (user encrypts with sops) ===
 
-def age_encrypt_file_key(file_key: bytes, recipient_pubkey_bech32: str,
-                         ephemeral_privkey: X25519PrivateKey) -> tuple[bytes, bytes]:
-    """Encrypt file key for a single age recipient."""
-    # Decode recipient public key
-    data = []
-    for c in recipient_pubkey_bech32[4:]:  # skip "age1"
-        data.append(BECH32_CHARSET.index(c))
-    # Remove checksum (last 6) and convert back from 5-bit
-    data = data[:-6]
-    acc, bits = 0, 0
-    recipient_bytes = []
-    for v in data:
-        acc = (acc << 5) | v
-        bits += 5
-        while bits >= 8:
-            bits -= 8
-            recipient_bytes.append((acc >> bits) & 0xff)
-    recipient_pub = X25519PublicKey.from_public_bytes(bytes(recipient_bytes))
-
-    ephemeral_pub = ephemeral_privkey.public_key()
-    ephemeral_pub_bytes = ephemeral_pub.public_bytes(
-        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
-    )
-
-    # X25519 key agreement
-    shared_secret = ephemeral_privkey.exchange(recipient_pub)
-
-    # Derive wrap key using HKDF
-    salt = ephemeral_pub_bytes + bytes(recipient_bytes)
-    hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt,
-                info=b"age-encryption.org/v1/X25519")
-    wrap_key = hkdf.derive(shared_secret)
-
-    # Encrypt file key with ChaCha20-Poly1305
-    chacha = ChaCha20Poly1305(wrap_key)
-    nonce = b'\x00' * 12
-    encrypted_file_key = chacha.encrypt(nonce, file_key, None)
-
-    return ephemeral_pub_bytes, encrypted_file_key
-
-
-def generate_sops_secrets(password_hash: str, nextcloud_password: str,
-                          user_age_pub: str, host_age_pub: str) -> str:
-    """Generate SOPS-encrypted secrets.yaml content."""
-    # Generate random file key (data key)
-    file_key = secrets.token_bytes(32)
-
-    # Derive payload key
-    hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=b"", info=b"payload")
-    payload_key = hkdf.derive(file_key)
-
-    def encrypt_value(plaintext: str) -> str:
-        iv = secrets.token_bytes(12)
-        aesgcm = AESGCM(payload_key)
-        ciphertext = aesgcm.encrypt(iv, plaintext.encode('utf-8'), None)
-        data = ciphertext[:-16]
-        tag = ciphertext[-16:]
-        return f"ENC[AES256_GCM,data:{base64.b64encode(data).decode()},iv:{base64.b64encode(iv).decode()},tag:{base64.b64encode(tag).decode()},type:str]"
-
-    enc_pw_hash = encrypt_value(password_hash)
-    enc_nc_pw = encrypt_value(nextcloud_password)
-
-    # Encrypt file key for each recipient
-    stanzas = []
-    for recipient in [user_age_pub, host_age_pub]:
-        ephemeral_priv = X25519PrivateKey.generate()
-        eph_pub_bytes, enc_file_key = age_encrypt_file_key(file_key, recipient, ephemeral_priv)
-
-        # Format age stanza
-        eph_b64 = base64.b64encode(eph_pub_bytes).decode().rstrip('=')
-        header = f"age-encryption.org/v1\n-> X25519 {eph_b64}\n"
-        body = base64.b64encode(enc_file_key).decode().rstrip('=')
-        full = header + body + "\n---"
-        wrapped = base64.b64encode(full.encode()).decode()
-        lines = [wrapped[i:i+64] for i in range(0, len(wrapped), 64)]
-
-        stanzas.append(f"""        - recipient: {recipient}
-          enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            {chr(10).join('            ' + line for line in lines).strip()}
-            -----END AGE ENCRYPTED FILE-----""")
-
-    # Generate MAC
-    mac_data = (enc_pw_hash + enc_nc_pw).encode('utf-8')
-    import hmac as hmac_mod
-    mac_bytes = hmac_mod.new(payload_key, mac_data, hashlib.sha256).digest()
-    mac_iv = secrets.token_bytes(12)
-    aesgcm = AESGCM(payload_key)
-    enc_mac = aesgcm.encrypt(mac_iv, mac_bytes, None)
-    mac_str = f"ENC[AES256_GCM,data:{base64.b64encode(enc_mac[:-16]).decode()},iv:{base64.b64encode(mac_iv).decode()},tag:{base64.b64encode(enc_mac[-16:]).decode()},type:str]"
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
+def generate_plaintext_secrets(password_hash: str, nextcloud_password: str) -> str:
+    """Generate plaintext secrets.yaml for user to encrypt with sops."""
     return f"""admin:
-    password_hash: {enc_pw_hash}
+    password_hash: {password_hash}
 nextcloud:
-    admin_password: {enc_nc_pw}
-sops:
-    age:
-{chr(10).join(stanzas)}
-    lastmodified: "{timestamp}"
-    mac: {mac_str}
-    unencrypted_suffix: _unencrypted
-    version: 3.9.0
+    admin_password: {nextcloud_password}
 """
 
 
@@ -974,18 +871,16 @@ def generate(config: Config, output_dir: Path):
     (modules_dir / "nextcloud.nix").write_text(nextcloud_nix(config))
     (modules_dir / "auto-upgrade.nix").write_text(auto_upgrade_nix(config))
 
-    print("Generating encrypted secrets...")
+    print("Generating secrets (unencrypted)...")
     password_hash = sha512_crypt(config.admin_password)
-    secrets_content = generate_sops_secrets(
-        password_hash, config.nextcloud_password,
-        keygen.user_age_pubkey, keygen.host_age_pubkey
-    )
+    secrets_content = generate_plaintext_secrets(password_hash, config.nextcloud_password)
     (secrets_dir / "secrets.yaml").write_text(secrets_content)
 
     print(f"\nConfiguration generated in: {output_dir}")
-    print(f"\nIMPORTANT:")
-    print(f"  - Keep keys/ directory secure!")
-    print(f"  - Copy keys/age_key.txt to ~/.config/sops/age/keys.txt")
+    print(f"\nIMPORTANT - You must encrypt secrets.yaml with sops:")
+    print(f"  1. Copy keys/age_key.txt to ~/.config/sops/age/keys.txt")
+    print(f"  2. Run: cd {output_dir} && sops -e -i secrets/secrets.yaml")
+    print(f"\nKeep the keys/ directory secure and never commit unencrypted secrets!")
 
 
 def prompt(label: str, default: str = "") -> str:
