@@ -17,13 +17,45 @@ A ready-to-deploy NixOS home server with Nextcloud, AdGuard Home, and security h
 - Python 3 with tkinter (provided via nix-shell)
 
 **Target machine:**
-- SSH access (can be Ubuntu, NixOS ISO, or existing NixOS)
+- Bootable NixOS live USB
 - OS disk (will be formatted)
 - Data partition (should be pre-formatted with ext4)
 
 ---
 
-## Step 1: Clone the Repository
+## Step 1: Create a NixOS Live USB
+
+Download the NixOS minimal ISO from [nixos.org/download](https://nixos.org/download/#nixos-iso) and flash it to a USB drive:
+
+```bash
+# Replace /dev/sdX with your USB device
+sudo dd if=nixos-minimal-*.iso of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+Boot your target machine from the USB.
+
+---
+
+## Step 2: Prepare the Live Environment
+
+On the target machine (booted from NixOS USB), set a password for the nixos user and start SSH:
+
+```bash
+# Set password for nixos user
+passwd
+
+# SSH daemon is already running, verify it
+systemctl status sshd
+
+# Get the IP address
+ip addr
+```
+
+Note the IP address - you'll need it to SSH in from your workstation.
+
+---
+
+## Step 3: Clone the Repository (on workstation)
 
 ```bash
 git clone https://github.com/YOUR_USER/NixOSHome.git
@@ -32,9 +64,7 @@ cd NixOSHome
 
 ---
 
-## Step 2: Gather Required Information
-
-Before running the generator, collect:
+## Step 4: Gather Required Information
 
 **From your workstation:**
 ```bash
@@ -42,23 +72,25 @@ Before running the generator, collect:
 cat ~/.ssh/id_ed25519.pub
 ```
 
-**From your target machine:**
+**From your target machine (via SSH or directly):**
 ```bash
-# Network interface name
+ssh nixos@TARGET_IP
+
+# Network interface name (for permanent install)
 ip link show
 
 # Disk devices
 lsblk -d -o NAME,SIZE,MODEL
 ```
 
-**Generate a password hash:**
+**Generate a password hash (on workstation):**
 ```bash
 nix-shell -p mkpasswd --run "mkpasswd -m sha-512"
 ```
 
 ---
 
-## Step 3: Create Your Age Key
+## Step 5: Create Your Age Key
 
 Generate an age key for encrypting secrets:
 
@@ -71,7 +103,7 @@ Copy your public key (starts with `age1...`) - you'll need it for the generator.
 
 ---
 
-## Step 4: Run the Generator
+## Step 6: Run the Generator
 
 ```bash
 cd generator
@@ -89,7 +121,7 @@ Click **Generate** to create the configuration files.
 
 ---
 
-## Step 5: Encrypt Secrets
+## Step 7: Encrypt Secrets
 
 ```bash
 cd options
@@ -99,7 +131,7 @@ cd ..
 
 ---
 
-## Step 6: Push to GitHub
+## Step 8: Push to GitHub
 
 Create a new repository on GitHub, then:
 
@@ -114,26 +146,28 @@ The encrypted secrets are safe to commit.
 
 ---
 
-## Step 7: Deploy with nixos-anywhere
+## Step 9: Deploy with nixos-anywhere
 
-From your workstation, deploy to the target:
+From your workstation, deploy to the target (still running the live USB):
 
 ```bash
 nix run github:nix-community/nixos-anywhere -- \
   --flake github:YOUR_USER/NixOSHome#HOSTNAME \
-  root@TARGET_IP
+  nixos@TARGET_IP
 ```
 
 Replace:
 - `YOUR_USER` - Your GitHub username
 - `HOSTNAME` - The hostname you configured
-- `TARGET_IP` - Target machine's current IP
+- `TARGET_IP` - Target machine's IP (from Step 2)
+
+Enter the password you set in Step 2 when prompted.
 
 **Note:** The first deploy will fail to decrypt secrets. This is expected.
 
 ---
 
-## Step 8: Add Host Key to SOPS
+## Step 10: Add Host Key to SOPS
 
 After deployment, get the host's age key:
 
@@ -174,9 +208,9 @@ git push
 
 ---
 
-## Step 9: Final Rebuild
+## Step 11: Final Rebuild
 
-SSH into your server:
+SSH into your server (now running from disk, not USB):
 
 ```bash
 ssh -p SSH_PORT admin@TARGET_IP
@@ -190,7 +224,7 @@ sudo nixos-rebuild switch --flake github:YOUR_USER/NixOSHome#HOSTNAME
 
 ---
 
-## Step 10: Verify Services
+## Step 12: Verify Services
 
 After successful rebuild:
 
@@ -225,6 +259,11 @@ Or let automatic updates handle it (runs daily at 04:00).
 - Verify interface name with `ip link show`
 - Check IP/gateway match your network
 - Ensure the data partition exists and is formatted
+
+### SSH connection refused on live USB
+- Verify SSH is running: `systemctl status sshd`
+- Check firewall: `sudo iptables -L`
+- Ensure you set a password with `passwd`
 
 ### Services not starting
 ```bash
