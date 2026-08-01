@@ -1,7 +1,7 @@
 {
   # Host Configuration
-  hostname = "barnfold";
-  domain = "barn";
+  hostname = "testhostname";
+  domain = "domain";
 
   # Locale & Time
   timeZone = "Europe/London";
@@ -11,20 +11,20 @@
 
   # Network
   interface = "enp3s0";
-  ipAddress = "192.168.0.67";
+  ipAddress = "192.168.0.55";
   prefixLength = 24;
   gateway = "192.168.0.1";
   nameservers = [ "127.0.0.1" "1.1.1.1" "9.9.9.9" ];
 
   # SSH
-  sshPort = 67;
+  sshPort = 33;
   sshKeys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHEr9l0xPvco+x1zz2X5skaIwpjtI0+QGOELm/KtV5d kiroshi" ];
 
   # Admin User
   adminUser = "admin";
 
   # Services - Nextcloud
-  nextcloudDomain = "cloud.barnfold";
+  nextcloudDomain = "cloud.home";
   nextcloudDataDir = "/srv/data/nextcloud";
   nextcloudMaxUpload = "16G";
   nextcloudPort = 8080;
@@ -32,7 +32,7 @@
   # Services - AdGuard / DNS
   adguardPort = 3000;
   dnsPort = 53;
-  dnsDomain = "dns.barnfold";
+  dnsDomain = "dns.home";
   upstreamDns = [ "https://dns.cloudflare.com/dns-query" "https://dns.quad9.net/dns-query" ];
   bootstrapDns = [ "1.1.1.1" "9.9.9.9" ];
 
